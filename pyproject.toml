@@ -1,0 +1,26 @@
+[tool.poetry]
+name = "amazonia_bot"
+version = "0.1.0"
+description = ""
+authors = ["SerOnly <seronly@mail.ru>"]
+readme = "README.md"
+packages = [{include = "bot"}]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+python-dotenv = "^0.21.1"
+python-telegram-bot = "^20.0"
+sqlalchemy = "^2.0.0"
+pymysql = "^1.0.2"
+cryptography = "^39.0.0"
+
+
+[tool.poetry.group.dev.dependencies]
+black = {version = "^23.1a1", allow-prereleases = true}
+
+[tool.black]
+line-length = 79
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
