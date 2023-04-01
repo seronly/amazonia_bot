@@ -27,15 +27,14 @@ Session = scoped_session(sessionmaker(engine))
 
 
 # User
-def create_or_update_user(update) -> None:
+def create_or_update_user(tg_user) -> None:
     """Create or update user
 
     Args:
-        update (Update): Bot answer update
+        tg_user (User): Effective_user or from_user
     """
     session = Session()
 
-    tg_user = update.effective_user
     try:
         user = get_user(tg_user.id)
         is_admin = str(tg_user.id) in os.getenv("ADMIN_IDS").split(", ")

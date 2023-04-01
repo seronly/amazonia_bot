@@ -93,7 +93,7 @@ def main():
     )
 
     # Err handler
-    application.add_error_handler(bot.error_handler)
+    # application.add_error_handler(bot.error_handler)
     application.run_polling()
 
 

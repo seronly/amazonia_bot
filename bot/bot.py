@@ -1,4 +1,6 @@
 from telegram import (
+    PhotoSize,
+    Video,
     ReplyKeyboardMarkup,
     ReplyKeyboardRemove,
     InlineKeyboardButton,
@@ -6,12 +8,14 @@ from telegram import (
     Update,
     ChatMemberUpdated
 )
+from telegram._utils.types import FileInput
 from telegram.ext import (
     ContextTypes,
     ConversationHandler,
 )
 from telegram.constants import ParseMode
 from telegram.error import Forbidden
+from typing import Optional, Union
 
 import constants
 import db
@@ -24,10 +28,31 @@ import traceback
 logger = cl.logger
 
 
+class myMessage():
+    chat_id: int
+    msg_type: str
+    text: Optional[str] = ""
+    attachment: Optional[Union[FileInput, "PhotoSize", "Video"]] = None
+    kb: Optional[InlineKeyboardMarkup] = None
+
+    def __repr__(self) -> str:
+        return f"""\
+Message:
+{self.chat_id=}
+{self.msg_type=}
+{self.text=}
+{self.attachment=}
+{self.kb=}
+self
+        """
+
+
 # Commands
+
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = constants.START_TEXT
-    db.create_or_update_user(update)
+    db.create_or_update_user(update.effective_user)
     await update.message.reply_text(text)
 
 
@@ -61,7 +86,7 @@ async def start_send_ad(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return constants.SEND_AD_TEXT
 
 
-async def send_ad_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def get_ad_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     reply_keyboard = [["Да"], ["Нет"]]
     if update.message.text == "Да":
         await update.message.reply_text(
@@ -81,7 +106,7 @@ async def send_ad_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return constants.SEND_AD_ATTACHMENT
 
 
-async def send_ad_attachment(
+async def get_ad_attachment(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ):
     if update.message.text == "Да":
@@ -122,7 +147,7 @@ async def send_ad_attachment(
     return constants.SEND_AD_BUTTON
 
 
-async def send_ad_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def get_ad_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.message.text == "Да":
         await update.message.reply_text(
             "Отправьте текст кнопки",
@@ -164,8 +189,10 @@ async def send_ad(
     users = db.get_all_users(inlcude_admin=False)
     sended_users_number = 0
     block_bot_users_number = 0
+    msg = myMessage()
+    msg.msg_type = post["type"]
+    msg.attachment = post["attachment"]
     text = post["text"]
-    file = post["attachment"]
     button = (
         InlineKeyboardButton(
             text=post["button"]["text"],
@@ -174,38 +201,17 @@ async def send_ad(
         if post.get("button", None)
         else None
     )
-    kb = InlineKeyboardMarkup([[button]]) if button else None
+    msg.kb = InlineKeyboardMarkup([[button]]) if button else None
 
     try:
         for user in users:
-            text = text.format(
+            msg.text = text.format(
                 name=user.fullname or "Уважаемый пользователь",
                 username=user.username or "",
             )
+            msg.chat_id = user.tg_id
             if not user.is_blocked:
-                if post["type"] == "photo":
-                    await context.bot.send_photo(
-                        chat_id=user.tg_id,
-                        photo=file,
-                        caption=text,
-                        parse_mode=ParseMode.HTML,
-                        reply_markup=kb,
-                    )
-                elif post["type"] == "video":
-                    await context.bot.send_video(
-                        chat_id=user.tg_id,
-                        video=file,
-                        caption=text,
-                        parse_mode=ParseMode.HTML,
-                        reply_markup=kb,
-                    )
-                else:
-                    await context.bot.send_message(
-                        user.tg_id,
-                        text=text,
-                        parse_mode=ParseMode.HTML,
-                        reply_markup=kb,
-                    )
+                await _send_message(update, context, msg)
                 sended_users_number += 1
             else:
                 block_bot_users_number += 1
@@ -216,44 +222,45 @@ async def send_ad(
         await update.message.reply_text(
             f"Рассылка была отправлена {sended_users_number} пользователям!\n"
             f"Пользователей, заблокировавших  бота: {block_bot_users_number}."
-            f"\n\nПост:",
+            f"\nПост:",
             reply_markup=ReplyKeyboardMarkup(
                 keyboard=constants.ADMIN_MENU_BTNS,
                 resize_keyboard=True,
             ),
         )
-        if post["type"] == "photo":
-            await context.bot.send_photo(
-                chat_id=update.effective_user.id,
-                photo=file,
-                caption=text.format(
-                    name=user.fullname or "Уважаемый пользователь",
-                    username=user.username or "",
-                ),
-                parse_mode=ParseMode.HTML,
-                reply_markup=kb,
-            )
-        elif post["type"] == "video":
-            await context.bot.send_video(
-                chat_id=update.effective_user.id,
-                video=file,
-                caption=text.format(
-                    name=user.fullname or "Уважаемый пользователь",
-                    username=user.username or "",
-                ),
-                parse_mode=ParseMode.HTML,
-                reply_markup=kb,
-            )
-        else:
-            await context.bot.send_message(
-                chat_id=update.effective_user.id,
-                text=text.format(
-                    name=user.fullname or "Уважаемый пользователь",
-                    username=user.username or "",
-                ),
-                parse_mode=ParseMode.HTML,
-                reply_markup=kb,
-            )
+        msg.text = text
+        msg.chat_id = update.effective_user.id
+        await _send_message(update, context, msg)
+
+
+async def _send_message(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+    msg: myMessage
+) -> None:
+    if msg.msg_type == "photo":
+        await context.bot.send_photo(
+            chat_id=msg.chat_id,
+            photo=msg.attachment,
+            caption=msg.text,
+            parse_mode=ParseMode.HTML,
+            reply_markup=msg.kb,
+        )
+    elif msg.msg_type == "video":
+        await context.bot.send_video(
+            chat_id=update.effective_user.id,
+            video=msg.attachment,
+            caption=msg.text,
+            parse_mode=ParseMode.HTML,
+            reply_markup=msg.kb,
+        )
+    else:
+        await context.bot.send_message(
+            chat_id=msg.chat_id,
+            text=msg.text,
+            parse_mode=ParseMode.HTML,
+            reply_markup=msg.kb,
+        )
 
 
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -281,7 +288,8 @@ async def get_join_request(
 ):
     user = update.chat_join_request.from_user
     chat_id = update.chat_join_request.api_kwargs['user_chat_id']
-
+    db.create_or_update_user(user)
+    await update.chat_join_request.approve()
     await context.bot.send_message(
         chat_id=chat_id,
         text="qq"
