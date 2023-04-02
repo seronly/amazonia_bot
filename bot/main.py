@@ -28,38 +28,81 @@ def main():
     admin_ids = set(
         [int(user_id) for user_id in os.getenv("ADMIN_IDS").split(", ")]
     )
+    bot.load_greeting_msg(application.bot)
 
     # Conversation handler
     ad_conversation_handler = ConversationHandler(
         entry_points=[
             CommandHandler(
-                "send_ad", bot.start_send_ad, filters.User(admin_ids)
+                "send_ad", bot.start_create_post, filters.User(admin_ids)
             ),
             MessageHandler(
                 filters.Text(constants.SEND_AD_BTN) & filters.User(admin_ids),
-                bot.start_send_ad,
+                bot.start_create_post,
             ),
         ],
         states={
-            constants.SEND_AD_TEXT: [
-                MessageHandler(filters.TEXT, bot.send_ad_text)
+            constants.SEND_POST_TEXT: [
+                MessageHandler(filters.TEXT & ~ filters.COMMAND,
+                               bot.get_post_text)
             ],
-            constants.SEND_AD_ATTACHMENT: [
+            constants.SEND_POST_ATTACHMENT: [
                 MessageHandler(
                     filters.PHOTO
                     | filters.VIDEO
                     | filters.Regex(r"^(Да|Нет)$"),
-                    bot.send_ad_attachment,
+                    bot.get_post_attachment,
                 )
             ],
-            constants.SEND_AD_BUTTON: [
-                MessageHandler(filters.TEXT, bot.send_ad_button)
+            constants.SEND_POST_BUTTON: [
+                MessageHandler(filters.Regex(r"^Нет$"), bot.confirm_post),
+                MessageHandler(filters.TEXT & ~ filters.COMMAND,
+                               bot.get_post_button),
+            ],
+            constants.SEND_POST: [
+                MessageHandler(filters.Regex(r"^Подтвердить$"), bot.send_ad)
+            ],
+        },
+        fallbacks=[CommandHandler("cancel", bot.cancel)],
+    )
+    hello_msg_conv_handler = ConversationHandler(
+        entry_points=[
+            CommandHandler(
+                "change_msg", bot.start_create_post, filters.User(admin_ids)
+            ),
+            MessageHandler(
+                filters.Text(constants.CHANGE_MSG_BTN) & filters.User(
+                    admin_ids),
+                bot.start_create_post,
+            ),
+        ],
+        states={
+            constants.SEND_POST_TEXT: [
+                MessageHandler(filters.TEXT & ~ filters.COMMAND,
+                               bot.get_post_text)
+            ],
+            constants.SEND_POST_ATTACHMENT: [
+                MessageHandler(
+                    filters.PHOTO
+                    | filters.VIDEO
+                    | filters.Regex(r"^(Да|Нет)$"),
+                    bot.get_post_attachment,
+                )
+            ],
+            constants.SEND_POST_BUTTON: [
+                MessageHandler(filters.Regex(r"^Нет$"), bot.confirm_post),
+                MessageHandler(filters.TEXT & ~ filters.COMMAND,
+                               bot.get_post_button),
+            ],
+            constants.SEND_POST: [
+                MessageHandler(filters.Regex(r"^Подтвердить$"), bot.change_msg)
             ],
         },
         fallbacks=[CommandHandler("cancel", bot.cancel)],
     )
 
     application.add_handler(ad_conversation_handler)
+    application.add_handler(hello_msg_conv_handler)
 
     # User command
     application.add_handler(CommandHandler("start", bot.start))
