@@ -105,11 +105,11 @@ def main():
     application.add_handler(hello_msg_conv_handler)
 
     # User command
-    application.add_handler(CommandHandler("start", bot.start))
-    application.add_handler(CommandHandler("help", bot.help))
+    # application.add_handler(CommandHandler("start", bot.start))
+    # application.add_handler(CommandHandler("help", bot.help))
     application.add_handler(ChatJoinRequestHandler(
         callback=bot.get_join_request,
-        # chat_id=os.getenv('CHANNEL_ID')
+        chat_id=int(os.getenv('CHANNEL_ID'))
     ))
     # Admin
     application.add_handler(

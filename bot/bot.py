@@ -222,31 +222,30 @@ async def send_ad(
     sended_users_number = 0
     block_bot_users_number = 0
 
-    try:
-        for user in users:
-            post.text = text.format(
-                name=user.fullname or "Уважаемый пользователь",
-                username=user.username or "",
-            )
-            chat_id = user.tg_id
-            if not user.is_blocked:
-                await _send_message(update, context, chat_id, post)
-                sended_users_number += 1
-            else:
-                block_bot_users_number += 1
-    except Forbidden:
-        db.update_user(user.tg_id, {"is_blocked": True})
-        block_bot_users_number += 1
-    finally:
-        await update.message.reply_text(
-            f"Рассылка была отправлена {sended_users_number} пользователям!\n"
-            f"Пользователей, заблокировавших  бота: {block_bot_users_number}.",
-            reply_markup=ReplyKeyboardMarkup(
-                keyboard=constants.ADMIN_MENU_BTNS,
-                resize_keyboard=True,
-            ),
+    for user in users:
+        post.text = text.format(
+            name=user.fullname or "Уважаемый пользователь",
+            username=user.username or "",
         )
-        return ConversationHandler.END
+        chat_id = user.tg_id
+        result = await _send_message(update, context, chat_id, post)
+        if result:
+            sended_users_number += 1
+            if user.is_blocked:
+                db.update_user(user.tg_id, {"is_blocked": False})
+        else:
+            db.update_user(user.tg_id, {"is_blocked": True})
+            block_bot_users_number += 1
+    await update.message.reply_text(
+        f"Рассылка была отправлена {sended_users_number} пользователям!\n"
+        f"Пользователей, заблокировавших бота \
+c прошлой рассылки: {block_bot_users_number}.",
+        reply_markup=ReplyKeyboardMarkup(
+            keyboard=constants.ADMIN_MENU_BTNS,
+            resize_keyboard=True,
+        ),
+    )
+    return ConversationHandler.END
 
 
 async def change_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -286,38 +285,44 @@ async def _send_message(
     context: ContextTypes.DEFAULT_TYPE,
     chat_id: int,
     msg: myMessage
-) -> None:
-    if msg.msg_type == "text":
-        await context.bot.send_message(
-            chat_id=chat_id,
-            text=msg.text,
-            parse_mode=ParseMode.MARKDOWN_V2,
-            reply_markup=msg.kb,
-        )
-        return
-    # Загрузка файла из URL
-    response = requests.get(msg.attachment)
-    if response.status_code == 200:
-        file = response.content
+) -> bool:
+    try:
+        if msg.msg_type == "text":
+            await context.bot.send_message(
+                chat_id=chat_id,
+                text=msg.text,
+                parse_mode=ParseMode.MARKDOWN_V2,
+                reply_markup=msg.kb,
+            )
+            return True
+        # Загрузка файла из URL
+        response = requests.get(msg.attachment)
+        if response.status_code == 200:
+            file = response.content
+        else:
+            print("Не удалось загрузить файл")
+            return False
+        if msg.msg_type == "photo":
+            await context.bot.send_photo(
+                chat_id=chat_id,
+                photo=file,
+                caption=msg.text,
+                parse_mode=ParseMode.MARKDOWN_V2,
+                reply_markup=msg.kb,
+            )
+        elif msg.msg_type == "video":
+            await context.bot.send_video(
+                chat_id=chat_id,
+                video=file,
+                caption=msg.text,
+                parse_mode=ParseMode.MARKDOWN_V2,
+                reply_markup=msg.kb,
+            )
+    except Forbidden as err:
+        return False
     else:
-        print("Не удалось загрузить файл")
-        return
-    if msg.msg_type == "photo":
-        await context.bot.send_photo(
-            chat_id=chat_id,
-            photo=file,
-            caption=msg.text,
-            parse_mode=ParseMode.MARKDOWN_V2,
-            reply_markup=msg.kb,
-        )
-    elif msg.msg_type == "video":
-        await context.bot.send_video(
-            chat_id=chat_id,
-            video=file,
-            caption=msg.text,
-            parse_mode=ParseMode.MARKDOWN_V2,
-            reply_markup=msg.kb,
-        )
+        print("Все збс")
+        return True
 
 
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
