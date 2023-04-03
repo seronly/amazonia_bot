@@ -321,7 +321,6 @@ async def _send_message(
     except Forbidden as err:
         return False
     else:
-        print("Все збс")
         return True
 
 
@@ -351,9 +350,14 @@ async def get_join_request(
 ):
     user = update.chat_join_request.from_user
     chat_id = update.chat_join_request.api_kwargs['user_chat_id']
-    db.create_or_update_user(user)
-    await update.chat_join_request.approve()
     await _send_message(update, context, chat_id, greeting_message)
+
+    user_status = await context.bot.get_chat_member(chat_id, user_id).status
+    if user_status not in ["member", "administrator", "creator"]:
+        await update.chat_join_request.approve()
+    else:
+        print(f"{user} already in chat.")
+    db.create_or_update_user(user)
 
 
 async def error_handler(
