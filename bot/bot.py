@@ -259,7 +259,7 @@ c прошлой рассылки: {block_bot_users_number}.",
 
 async def change_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
     post: myMessage = context.user_data["post"]
-    await save_greeting_msg(post)
+    save_greeting_msg(post)
     await context.bot.send_message(
         update.effective_user.id,
         "Изменено!",
