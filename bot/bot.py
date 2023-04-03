@@ -381,6 +381,13 @@ async def get_join_request(
     db.create_or_update_user(user)
 
 
+async def check_greeting_message(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE
+):
+    await _send_message(update, context, update.effective_user.id, greeting_message)
+
+
 async def error_handler(
     update: object, context: ContextTypes.DEFAULT_TYPE
 ) -> None:

@@ -147,6 +147,21 @@ def main():
         )
     )
 
+    application.add_handler(
+        CommandHandler(
+            "check_msg",
+            bot.check_greeting_message,
+            filters.User(admin_ids),
+        )
+    )
+
+    application.add_handler(
+        MessageHandler(
+            filters.Text(constants.CHECK_GREETING_MSG) & filters.User(
+                admin_ids),
+            bot.check_greeting_message,
+        )
+    )
     # Err handler
     # application.add_error_handler(bot.error_handler)
     application.run_polling()
