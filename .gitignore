@@ -1,6 +1,4 @@
 hello_msg.json
-hello*.*
-bot/
 # *.db
 # Byte-compiled / optimized / DLL files
 __pycache__/
