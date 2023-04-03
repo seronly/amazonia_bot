@@ -271,26 +271,29 @@ async def change_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return ConversationHandler.END
 
 
-async def save_greeting_msg(msg: myMessage) -> None:
+def save_greeting_msg(msg: myMessage) -> None:
     global greeting_message
+    file_path = constants.GREETING_MSG_FILE
     if msg.kb:
         msg.kb = msg.kb.to_json()
-    # if msg.attachment:
-    #     file = await msg.attachment.get_file()
-    #     msg.attachment = file.file_path
 
     greeting_message = msg
-    with open("hello_msg.json", "w") as f:
+    with open(file_path, "w") as f:
         json.dump(msg.__dict__, f)
 
 
 def load_greeting_msg(bot: Bot) -> None:
     global greeting_message
-    with open("hello_msg.json", 'r') as f:
-        greeting_message = myMessage(**json.load(f))
-    if greeting_message.kb:
-        greeting_message.kb = InlineKeyboardMarkup.de_json(
-            json.loads(greeting_message.kb), bot)
+    file_path = constants.GREETING_MSG_FILE
+    if os.path.exists(file_path):
+        with open(file_path, 'r') as f:
+            greeting_message = myMessage(**json.load(f))
+        if greeting_message.kb:
+            greeting_message.kb = InlineKeyboardMarkup.de_json(
+                json.loads(greeting_message.kb), bot)
+    else:
+        with open(file_path, 'w') as f:
+            json.dump({}, f)
 
 
 async def _send_message(

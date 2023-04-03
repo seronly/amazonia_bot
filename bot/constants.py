@@ -19,3 +19,6 @@ ADMIN_MENU_BTNS = [[SEND_AD_BTN, CHANGE_MSG_BTN],
 # ConversationHandler
 SEND_POST_TEXT, SEND_POST_ATTACHMENT, SEND_POST_BUTTON, SEND_POST = range(
     4)
+
+# Files
+GREETING_MSG_FILE = './hello_msg.json'
