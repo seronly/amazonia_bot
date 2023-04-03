@@ -304,10 +304,6 @@ async def _send_message(
 ) -> bool:
     try:
         if msg.msg_type == "text":
-            await context.bot.send_chat_action(
-                chat_id=chat_id,
-                action=ChatAction.TYPING
-            )
             await context.bot.send_message(
                 chat_id=chat_id,
                 text=msg.text,
@@ -317,10 +313,6 @@ async def _send_message(
             return True
         file = msg.attachment
         if msg.msg_type == "photo":
-            await context.bot.send_chat_action(
-                chat_id=chat_id,
-                action=ChatAction.UPLOAD_PHOTO
-            )
             await context.bot.send_photo(
                 chat_id=chat_id,
                 photo=file,
@@ -329,10 +321,6 @@ async def _send_message(
                 reply_markup=msg.kb,
             )
         elif msg.msg_type == "video":
-            await context.bot.send_chat_action(
-                chat_id=chat_id,
-                action=ChatAction.UPLOAD_VIDEO
-            )
             await context.bot.send_video(
                 chat_id=chat_id,
                 video=file,
