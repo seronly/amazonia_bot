@@ -43,28 +43,35 @@ def main():
         ],
         states={
             constants.SEND_POST_TEXT: [
+                MessageHandler(filters.Regex(
+                    rf"^{constants.SKIP_BUTTON}$"), bot.skip_text),
                 MessageHandler(filters.TEXT & ~ filters.COMMAND,
-                               bot.get_post_text)
+                               bot.get_post_text),
             ],
             constants.SEND_POST_ATTACHMENT: [
                 MessageHandler(
                     filters.PHOTO
-                    | filters.VIDEO
-                    | filters.Regex(r"^(Да|Нет)$"),
+                    | filters.VIDEO,
                     bot.get_post_attachment,
-                )
+                ),
+                MessageHandler(filters.Regex(
+                    rf"^{constants.SKIP_BUTTON}$"), bot.skip_attachment)
+
             ],
             constants.SEND_POST_BUTTON: [
-                MessageHandler(filters.Regex(r"^Нет$"), bot.confirm_post),
-                MessageHandler(filters.TEXT & ~ filters.COMMAND,
+                MessageHandler(filters.Regex(
+                    rf"{constants.SKIP_BUTTON}"), bot.skip_post_button),
+                MessageHandler(filters.TEXT & ~filters.COMMAND,
                                bot.get_post_button),
             ],
             constants.SEND_POST: [
                 MessageHandler(filters.Regex(r"^Подтвердить$"), bot.send_ad)
             ],
+
         },
         fallbacks=[CommandHandler("cancel", bot.cancel)],
     )
+
     hello_msg_conv_handler = ConversationHandler(
         entry_points=[
             CommandHandler(
@@ -78,20 +85,25 @@ def main():
         ],
         states={
             constants.SEND_POST_TEXT: [
+                MessageHandler(filters.Regex(
+                    rf"^{constants.SKIP_BUTTON}$"), bot.skip_text),
                 MessageHandler(filters.TEXT & ~ filters.COMMAND,
-                               bot.get_post_text)
+                               bot.get_post_text),
             ],
             constants.SEND_POST_ATTACHMENT: [
                 MessageHandler(
                     filters.PHOTO
-                    | filters.VIDEO
-                    | filters.Regex(r"^(Да|Нет)$"),
+                    | filters.VIDEO,
                     bot.get_post_attachment,
-                )
+                ),
+                MessageHandler(filters.Regex(
+                    rf"^{constants.SKIP_BUTTON}$"), bot.skip_attachment)
+
             ],
             constants.SEND_POST_BUTTON: [
-                MessageHandler(filters.Regex(r"^Нет$"), bot.confirm_post),
-                MessageHandler(filters.TEXT & ~ filters.COMMAND,
+                MessageHandler(filters.Regex(
+                    rf"{constants.SKIP_BUTTON}"), bot.skip_post_button),
+                MessageHandler(filters.TEXT & ~filters.COMMAND,
                                bot.get_post_button),
             ],
             constants.SEND_POST: [

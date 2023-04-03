@@ -14,7 +14,7 @@ from telegram.ext import (
     ContextTypes,
     ConversationHandler,
 )
-from telegram.constants import ParseMode
+from telegram.constants import ChatAction, ParseMode
 from telegram.error import Forbidden
 from typing import Optional, Union
 
@@ -34,7 +34,7 @@ logger = cl.logger
 class myMessage():
     msg_type: str
     text: Optional[str] = ""
-    attachment: Optional[Union[FileInput, "PhotoSize", "Video"]] = None
+    attachment: Optional[Union[FileInput, "PhotoSize", "Video", str]] = None
     kb: Optional[InlineKeyboardMarkup] = None
 
     def __init__(
@@ -60,9 +60,7 @@ self
         """
 
 
-greeting_message = {
-
-}
+greeting_message: myMessage = myMessage()
 # Commands
 
 
@@ -89,36 +87,47 @@ async def admin(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
-async def start_create_post(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    reply_keyboard = [["Да"], ["Нет"]]
+async def start_create_post(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE
+):
+    reply_keyboard = [[constants.SKIP_BUTTON]]
     context.user_data["post"] = myMessage()
+    await context.bot.send_chat_action(
+        chat_id=update.effective_user.id,
+        action=ChatAction.TYPING
+    )
     await update.message.reply_text(
-        text="Нужно ли добавить текст?\n",
+        text="Отправьте текст или нажмите \"Пропустить\"",
         parse_mode="HTML",
         reply_markup=ReplyKeyboardMarkup(
-            reply_keyboard, one_time_keyboard=True, resize_keyboard=True
+            reply_keyboard, resize_keyboard=True
         ),
     )
     return constants.SEND_POST_TEXT
 
 
 async def get_post_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    reply_keyboard = [["Да"], ["Нет"]]
-    if update.message.text == "Да":
-        await update.message.reply_text(
-            "Отправьте текст", reply_markup=ReplyKeyboardRemove()
-        )
-        return constants.SEND_POST_TEXT
-    elif update.message.text == "Нет":
-        context.user_data["post"].text = ""
-    else:
-        text = escape_telegram_entities(update.message.text_markdown_v2_urled)
-        context.user_data["post"].text = text
+    text = escape_telegram_entities(update.message.text_markdown_v2_urled)
+    context.user_data["post"].text = text
+    await context.bot.send_chat_action(
+        chat_id=update.effective_user.id,
+        action=ChatAction.TYPING
+    )
     await update.message.reply_text(
-        "Нужно ли добавить фото или видео?",
-        reply_markup=ReplyKeyboardMarkup(
-            reply_keyboard, one_time_keyboard=True, resize_keyboard=True
-        ),
+        "Отправьте фото или видео, или нажмите \"Пропустить\"",
+    )
+    return constants.SEND_POST_ATTACHMENT
+
+
+async def skip_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data["post"].text = ""
+    await context.bot.send_chat_action(
+        chat_id=update.effective_user.id,
+        action=ChatAction.TYPING
+    )
+    await update.message.reply_text(
+        "Отправьте фото или видео, или нажмите \"Пропустить\"",
     )
     return constants.SEND_POST_ATTACHMENT
 
@@ -126,22 +135,13 @@ async def get_post_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def get_post_attachment(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ):
-    if update.message.text == "Да":
-        await update.message.reply_text(
-            "Отправьте фото или видео.", reply_markup=ReplyKeyboardRemove()
-        )
-        return constants.SEND_POST_ATTACHMENT
-    elif update.message.text == "Нет":
-        context.user_data["post"].msg_type = "text"
-    elif update.message.photo:
-        file = update.message.photo[-1]
-        photo = await file.get_file()
-        context.user_data["post"].attachment = photo.file_path
+    if update.message.photo:
+        file = update.message.photo[-1].file_id
+        context.user_data["post"].attachment = file
         context.user_data["post"].msg_type = "photo"
     elif update.message.video:
-        file = update.message.video
-        video = await file.get_file()
-        context.user_data["post"].attachment = video.file_path
+        file = update.message.video.file_id
+        context.user_data["post"].attachment = file
         context.user_data["post"].msg_type = "video"
     else:
         await update.message.reply_text(
@@ -151,46 +151,65 @@ async def get_post_attachment(
         )
         return constants.SEND_POST_ATTACHMENT
 
-    reply_keyboard = [["Да"], ["Нет"]]
+    await context.bot.send_chat_action(
+        chat_id=update.effective_user.id,
+        action=ChatAction.TYPING
+    )
 
     await update.message.reply_text(
-        "Добавить кнопку к посту?",
-        reply_markup=ReplyKeyboardMarkup(
-            reply_keyboard, one_time_keyboard=True, resize_keyboard=True
-        ),
+        """
+Введите текст и ссылку кнопки в формате:
+<code>текст кнопки - ссылка кнопки</code>
+Или нажмите \"Пропустить\"
+        """,
+        parse_mode=ParseMode.HTML
+    )
+    return constants.SEND_POST_BUTTON
+
+
+async def skip_attachment(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data["post"].msg_type = "text"
+    await update.message.reply_text(
+        """
+Введите текст и ссылку кнопки в формате:
+<code>текст кнопки - ссылка кнопки</code>
+Или нажмите \"Пропустить\"
+        """,
+        parse_mode=ParseMode.HTML
     )
     return constants.SEND_POST_BUTTON
 
 
 async def get_post_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.message.text == "Да":
-        await update.message.reply_text(
-            "Отправьте текст кнопки",
-            reply_markup=ReplyKeyboardRemove(),
-        )
-        return constants.SEND_POST_BUTTON
-    elif context.user_data.get("button", None):
-        context.user_data["post"].kb = InlineKeyboardMarkup([[
-            InlineKeyboardButton(
-                text=context.user_data["button"]["text"],
-                url=update.message.text.strip(),
-            )]]
-        )
-        await confirm_post(update, context)
-        return constants.SEND_POST
-    else:
-        context.user_data["button"] = {
-            "text": update.message.text.strip()
-        }
-        await update.message.reply_text(
-            "Введите ссылку",
-        )
-        return constants.SEND_POST_BUTTON
+    text_btn = update.message.text.split(" - ")[0].strip()
+    url_btn = update.message.text.split(" - ")[1].strip()
+    context.user_data["post"].kb = InlineKeyboardMarkup([[
+        InlineKeyboardButton(
+            text=text_btn,
+            url=url_btn,
+        )]]
+    )
+    await confirm_post(update, context)
+    return constants.SEND_POST
+
+
+async def skip_post_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await confirm_post(update, context)
+    return constants.SEND_POST
 
 
 async def confirm_post(update: Update, context: ContextTypes.DEFAULT_TYPE):
     post: myMessage = context.user_data["post"]
     chat_id = update.effective_user.id
+    if not post.text and not post.attachment:
+        await update.message.reply_text(
+            "Нет сообщения и/или изображения.\nПост не был создан.",
+            reply_markup=ReplyKeyboardMarkup(
+                keyboard=constants.ADMIN_MENU_BTNS,
+                resize_keyboard=True,
+            ),
+        )
+        return ConversationHandler.END
     await context.bot.send_message(
         chat_id,
         text="Пост:",
@@ -201,23 +220,13 @@ async def confirm_post(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
     )
     await _send_message(update, context, chat_id, post)
-    return constants.SEND_POST
 
 
 async def send_ad(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ):
     post: myMessage = context.user_data["post"]
-    text: str = post.text
-    if not post.text and not post.attachment:
-        await update.message.reply_text(
-            "Нет сообщения и/или изображения.\nРассылка не была отправлена.",
-            reply_markup=ReplyKeyboardMarkup(
-                keyboard=constants.ADMIN_MENU_BTNS,
-                resize_keyboard=True,
-            ),
-        )
-        return ConversationHandler.END
+    text: str | None = post.text
     users = db.get_all_users(inlcude_admin=False)
     sended_users_number = 0
     block_bot_users_number = 0
@@ -250,7 +259,7 @@ c прошлой рассылки: {block_bot_users_number}.",
 
 async def change_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
     post: myMessage = context.user_data["post"]
-    save_greeting_msg(post)
+    await save_greeting_msg(post)
     await context.bot.send_message(
         update.effective_user.id,
         "Изменено!",
@@ -262,10 +271,14 @@ async def change_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return ConversationHandler.END
 
 
-def save_greeting_msg(msg: myMessage) -> None:
+async def save_greeting_msg(msg: myMessage) -> None:
     global greeting_message
     if msg.kb:
         msg.kb = msg.kb.to_json()
+    # if msg.attachment:
+    #     file = await msg.attachment.get_file()
+    #     msg.attachment = file.file_path
+
     greeting_message = msg
     with open("hello_msg.json", "w") as f:
         json.dump(msg.__dict__, f)
@@ -288,6 +301,10 @@ async def _send_message(
 ) -> bool:
     try:
         if msg.msg_type == "text":
+            await context.bot.send_chat_action(
+                chat_id=chat_id,
+                action=ChatAction.TYPING
+            )
             await context.bot.send_message(
                 chat_id=chat_id,
                 text=msg.text,
@@ -295,14 +312,12 @@ async def _send_message(
                 reply_markup=msg.kb,
             )
             return True
-        # Загрузка файла из URL
-        response = requests.get(msg.attachment)
-        if response.status_code == 200:
-            file = response.content
-        else:
-            print("Не удалось загрузить файл")
-            return False
+        file = msg.attachment
         if msg.msg_type == "photo":
+            await context.bot.send_chat_action(
+                chat_id=chat_id,
+                action=ChatAction.UPLOAD_PHOTO
+            )
             await context.bot.send_photo(
                 chat_id=chat_id,
                 photo=file,
@@ -311,6 +326,10 @@ async def _send_message(
                 reply_markup=msg.kb,
             )
         elif msg.msg_type == "video":
+            await context.bot.send_chat_action(
+                chat_id=chat_id,
+                action=ChatAction.UPLOAD_VIDEO
+            )
             await context.bot.send_video(
                 chat_id=chat_id,
                 video=file,
@@ -349,10 +368,12 @@ async def get_join_request(
     context: ContextTypes.DEFAULT_TYPE
 ):
     user = update.chat_join_request.from_user
-    chat_id = update.chat_join_request.api_kwargs['user_chat_id']
-    await _send_message(update, context, chat_id, greeting_message)
+    user_id = update.chat_join_request.api_kwargs['user_chat_id']
+    chat_id = update.chat_join_request.chat.id
+    await _send_message(update, context, user_id, greeting_message)
 
-    user_status = await context.bot.get_chat_member(chat_id, user_id).status
+    chat_member = await context.bot.get_chat_member(chat_id, user_id)
+    user_status = chat_member.status
     if user_status not in ["member", "administrator", "creator"]:
         await update.chat_join_request.approve()
     else:
@@ -418,3 +439,5 @@ def escape_telegram_entities(text):
 
     # Экранируем все зарезервированные символы в тексте
     return re.sub(f'([\\{reserved_chars}])', r'\\\1', text)
+
+# TODO: add bot typing
