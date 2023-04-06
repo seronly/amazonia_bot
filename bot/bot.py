@@ -333,7 +333,10 @@ async def get_join_request(
 
 async def send_start_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
-    await update.message.reply_text(constants.FIRST_MSG_DESC)
+    await update.message.reply_text(
+        constants.FIRST_MSG_DESC,
+        reply_markup=ReplyKeyboardRemove()
+    )
     await asyncio.sleep(5)
     await _send_message(update, context, user_id, greeting_message)
 

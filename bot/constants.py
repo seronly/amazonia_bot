@@ -21,7 +21,7 @@ SEND_POST_TEXT, SEND_POST_ATTACHMENT, SEND_POST_BUTTON, SEND_POST = range(
     4)
 
 # Join request message
-FIRST_MSG_TEXT = "⁉️ЧТО ЭТО ЗА СУЩЕСТВО⁉️"
+FIRST_MSG_TEXT = "⁉️ЧТО ЭТО ЗА СУЩЕСТВО⁉️\n\n- пройди опрос и получи подарок 🎁"
 FIRST_MSG_IMG = './first_msg.jpg'
 FIRST_MSG_KB = [["Долгопят"], ["Лемур Коми"], ["Обезьяна"]]
 FIRST_MSG_DESC = """\
