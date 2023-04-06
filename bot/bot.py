@@ -1,3 +1,4 @@
+import asyncio
 from telegram import (
     Bot,
     PhotoSize,
@@ -390,59 +391,6 @@ async def _send_message(
         return True
 
 
-async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(
-        "Создание рекламного поста завершено",
-        reply_markup=ReplyKeyboardMarkup(constants.ADMIN_MENU_BTNS)
-    )
-    return ConversationHandler.END
-
-
-async def get_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_count = len(db.get_all_users(inlcude_admin=True))
-    user_blocked = db.get_blocked_user_count()
-
-    text = (
-        "Статистика:\n\n"
-        f"Кол-во пользователей:\n👤 {user_count}\n"
-        f"Кол-во пользователей, остановиших бота:\n🚫 {user_blocked}\n"
-    )
-    await update.message.reply_text(text)
-
-
-async def get_join_request(
-    update: Update,
-    context: ContextTypes.DEFAULT_TYPE
-):
-    user = update.chat_join_request.from_user
-    user_id = update.chat_join_request.api_kwargs['user_chat_id']
-    chat_id = update.chat_join_request.chat.id
-    await _send_message(update, context, user_id, greeting_message)
-
-    chat_member = await context.bot.get_chat_member(chat_id, user_id)
-    user_status = chat_member.status
-    if user_status not in ["member", "administrator", "creator"]:
-        try:
-            await update.chat_join_request.approve()
-        except Exception as ex:
-            print(ex, user_status, chat_member)
-    else:
-        print(f"{user} already in chat.")
-    db.create_or_update_user(user)
-
-
-async def check_greeting_message(
-    update: Update,
-    context: ContextTypes.DEFAULT_TYPE
-):
-    await _send_message(
-        update,
-        context,
-        update.effective_user.id,
-        greeting_message
-    )
-
-
 async def error_handler(
     update: object, context: ContextTypes.DEFAULT_TYPE
 ) -> None:
@@ -503,10 +451,3 @@ def escape_telegram_entities(text):
 
     # Экранируем все зарезервированные символы в тексте
     return re.sub(f'([\\{reserved_chars}])', r'\\\1', text)
-
-
-async def send_start_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Ответ на любой текст")
-
-# TODO: add bot typing
-#

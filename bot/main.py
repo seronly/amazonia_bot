@@ -165,11 +165,6 @@ def main():
             )
         )
 
-    # application.add_handler(CallbackQueryHandler(bot.send_start_text))
-    # application.add_handler(MessageHandler(
-    #     filters.Text(),
-    #     bot.send_start_text,
-    # ))
     # Err handler
     application.add_error_handler(bot.error_handler)
     application.run_polling()
