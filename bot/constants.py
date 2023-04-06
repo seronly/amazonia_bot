@@ -20,5 +20,10 @@ ADMIN_MENU_BTNS = [[SEND_AD_BTN, CHANGE_MSG_BTN],
 SEND_POST_TEXT, SEND_POST_ATTACHMENT, SEND_POST_BUTTON, SEND_POST = range(
     4)
 
+# Join request message
+FIRST_MSG_TEXT = "⁉️ЧТО ЭТО ЗА СУЩЕСТВО⁉️"
+FIRST_MSG_IMG = './first_msg.jpg'
+FIRST_MSG_KB = [["Долгопят"], ["Лемур Коми"], ["Обезьяна"]]
+
 # Files
 GREETING_MSG_FILE = './hello_msg.json'

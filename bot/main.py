@@ -1,21 +1,16 @@
-from telegram import Chat
 from telegram.ext import (
     Application,
-    CallbackQueryHandler,
     CommandHandler,
     ConversationHandler,
     MessageHandler,
     ChatJoinRequestHandler,
     filters,
 )
-from telegram.constants import UpdateType
-from sqlalchemy.exc import PendingRollbackError
 import os
 import dotenv
-from db import Session
 import custom_logging as cl
-import bot
-import constants
+from bot import bot, constants
+
 
 dotenv.load_dotenv()
 
@@ -162,10 +157,20 @@ def main():
             bot.check_greeting_message,
         )
     )
-    application.add_handler(MessageHandler(
-        filters.Text(),
-        bot.send_start_text,
-    ))
+
+    for option in constants.FIRST_MSG_KB:
+        application.add_handler(
+            MessageHandler(
+                filters.Text(option[0]),
+                bot.send_start_text,
+            )
+        )
+
+    # application.add_handler(CallbackQueryHandler(bot.send_start_text))
+    # application.add_handler(MessageHandler(
+    #     filters.Text(),
+    #     bot.send_start_text,
+    # ))
     # Err handler
     # application.add_error_handler(bot.error_handler)
     application.run_polling()
