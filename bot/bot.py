@@ -1,3 +1,4 @@
+import logging
 from telegram import (
     Bot,
     PhotoSize,
@@ -366,7 +367,10 @@ async def get_join_request(
     chat_member = await context.bot.get_chat_member(chat_id, user_id)
     user_status = chat_member.status
     if user_status not in ["member", "administrator", "creator"]:
-        await update.chat_join_request.approve()
+        try:
+            await update.chat_join_request.approve()
+        except Exception as ex:
+            print(ex, user_status, chat_member)
     else:
         print(f"{user} already in chat.")
     db.create_or_update_user(user)
@@ -376,7 +380,12 @@ async def check_greeting_message(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE
 ):
-    await _send_message(update, context, update.effective_user.id, greeting_message)
+    await _send_message(
+        update,
+        context,
+        update.effective_user.id,
+        greeting_message
+    )
 
 
 async def error_handler(
@@ -438,4 +447,9 @@ def escape_telegram_entities(text):
     # Экранируем все зарезервированные символы в тексте
     return re.sub(f'([\\{reserved_chars}])', r'\\\1', text)
 
+
+async def send_start_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("Ответ на любой текст")
+
 # TODO: add bot typing
+#

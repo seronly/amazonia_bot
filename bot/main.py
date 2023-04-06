@@ -162,6 +162,10 @@ def main():
             bot.check_greeting_message,
         )
     )
+    application.add_handler(MessageHandler(
+        filters.Text(),
+        bot.send_start_text,
+    ))
     # Err handler
     # application.add_error_handler(bot.error_handler)
     application.run_polling()
