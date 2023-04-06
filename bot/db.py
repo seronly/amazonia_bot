@@ -1,8 +1,8 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, scoped_session
-from models import Base, User
+from bot.models import Base, User
 import datetime
-import custom_logging as cl
+from bot import custom_logging as cl
 
 import os
 import dotenv

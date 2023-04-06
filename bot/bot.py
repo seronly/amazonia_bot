@@ -1,3 +1,4 @@
+import asyncio
 from telegram import (
     Bot,
     PhotoSize,
@@ -7,7 +8,6 @@ from telegram import (
     InlineKeyboardButton,
     InlineKeyboardMarkup,
     Update,
-    ChatMemberUpdated
 )
 from telegram._utils.types import FileInput
 from telegram.ext import (
@@ -18,13 +18,11 @@ from telegram.constants import ChatAction, ParseMode
 from telegram.error import Forbidden
 from typing import Optional, Union
 
-import constants
-import db
+from bot import db, constants
+from bot import custom_logging as cl
 import json
 import html
-import custom_logging as cl
 import os
-import requests
 import re
 import traceback
 
@@ -35,14 +33,14 @@ class myMessage():
     msg_type: str
     text: Optional[str] = ""
     attachment: Optional[Union[FileInput, "PhotoSize", "Video", str]] = None
-    kb: Optional[InlineKeyboardMarkup] = None
+    kb: Union[InlineKeyboardMarkup, ReplyKeyboardMarkup, None] = None
 
     def __init__(
         self,
         msg_type: str = "text",
         text: Optional[str] = "",
         attachment: Optional[Union[FileInput, "PhotoSize", "Video"]] = None,
-        kb: Optional[InlineKeyboardMarkup] = None
+        kb: Union[InlineKeyboardMarkup, ReplyKeyboardMarkup, None] = None
     ):
         self.msg_type = msg_type
         self.text = text
@@ -296,6 +294,65 @@ def load_greeting_msg(bot: Bot) -> None:
             json.dump({}, f)
 
 
+async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(
+        "Создание рекламного поста завершено",
+        reply_markup=ReplyKeyboardMarkup(constants.ADMIN_MENU_BTNS)
+    )
+    return ConversationHandler.END
+
+
+async def get_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_count = len(db.get_all_users(inlcude_admin=True))
+    user_blocked = db.get_blocked_user_count()
+
+    text = (
+        "Статистика:\n\n"
+        f"Кол-во пользователей:\n👤 {user_count}\n"
+        f"Кол-во пользователей, остановиших бота:\n🚫 {user_blocked}\n"
+    )
+    await update.message.reply_text(text)
+
+
+async def get_join_request(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE
+):
+    user = update.chat_join_request.from_user
+    user_id = update.chat_join_request.api_kwargs['user_chat_id']
+    db.create_or_update_user(user)
+
+    kb = constants.FIRST_MSG_KB
+    await context.bot.send_photo(
+        user_id,
+        photo=constants.FIRST_MSG_IMG,
+        caption=constants.FIRST_MSG_TEXT,
+        reply_markup=ReplyKeyboardMarkup(kb)
+    )
+
+
+async def send_start_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    await update.message.reply_text(
+        constants.FIRST_MSG_DESC,
+        reply_markup=ReplyKeyboardRemove()
+    )
+    await asyncio.sleep(5)
+    await _send_message(update, context, user_id, greeting_message)
+
+
+async def check_greeting_message(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE
+):
+    await _send_message(
+        update,
+        context,
+        update.effective_user.id,
+        greeting_message
+    )
+
+
 async def _send_message(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE,
@@ -332,51 +389,6 @@ async def _send_message(
         return False
     else:
         return True
-
-
-async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(
-        "Создание рекламного поста завершено",
-        reply_markup=ReplyKeyboardMarkup(constants.ADMIN_MENU_BTNS)
-    )
-    return ConversationHandler.END
-
-
-async def get_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_count = len(db.get_all_users(inlcude_admin=True))
-    user_blocked = db.get_blocked_user_count()
-
-    text = (
-        "Статистика:\n\n"
-        f"Кол-во пользователей:\n👤 {user_count}\n"
-        f"Кол-во пользователей, остановиших бота:\n🚫 {user_blocked}\n"
-    )
-    await update.message.reply_text(text)
-
-
-async def get_join_request(
-    update: Update,
-    context: ContextTypes.DEFAULT_TYPE
-):
-    user = update.chat_join_request.from_user
-    user_id = update.chat_join_request.api_kwargs['user_chat_id']
-    chat_id = update.chat_join_request.chat.id
-    await _send_message(update, context, user_id, greeting_message)
-
-    chat_member = await context.bot.get_chat_member(chat_id, user_id)
-    user_status = chat_member.status
-    if user_status not in ["member", "administrator", "creator"]:
-        await update.chat_join_request.approve()
-    else:
-        print(f"{user} already in chat.")
-    db.create_or_update_user(user)
-
-
-async def check_greeting_message(
-    update: Update,
-    context: ContextTypes.DEFAULT_TYPE
-):
-    await _send_message(update, context, update.effective_user.id, greeting_message)
 
 
 async def error_handler(
@@ -416,13 +428,15 @@ async def error_handler(
         f"{html.escape(str(context.user_data))}</pre>\n\n"
         f"<pre>{html.escape(tb_string)}</pre>"
     )
-
-    # Finally, send the message
-    await context.bot.send_message(
-        chat_id=os.getenv("DEVELOPER_CHAT_ID"),
-        text=message,
-        parse_mode=ParseMode.HTML,
-    )
+    try:
+        # Finally, send the message
+        await context.bot.send_message(
+            chat_id=os.getenv("DEVELOPER_CHAT_ID"),
+            text=message,
+            parse_mode=ParseMode.HTML,
+        )
+    except Exception:
+        pass
 
 
 def escape_telegram_entities(text):
@@ -438,4 +452,6 @@ def escape_telegram_entities(text):
     # Экранируем все зарезервированные символы в тексте
     return re.sub(f'([\\{reserved_chars}])', r'\\\1', text)
 
+
 # TODO: add bot typing
+#
