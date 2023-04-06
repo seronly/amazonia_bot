@@ -157,7 +157,6 @@ def main():
             bot.check_greeting_message,
         )
     )
-
     for option in constants.FIRST_MSG_KB:
         application.add_handler(
             MessageHandler(
