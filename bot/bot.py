@@ -333,7 +333,7 @@ async def get_join_request(
 
 async def send_start_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
-    await update.message.reply_text("Это такое то необыкновенное животное ляляля...")
+    await update.message.reply_text(constants.FIRST_MSG_DESC)
     await asyncio.sleep(5)
     await _send_message(update, context, user_id, greeting_message)
 
