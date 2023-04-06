@@ -425,13 +425,15 @@ async def error_handler(
         f"{html.escape(str(context.user_data))}</pre>\n\n"
         f"<pre>{html.escape(tb_string)}</pre>"
     )
-
-    # Finally, send the message
-    await context.bot.send_message(
-        chat_id=os.getenv("DEVELOPER_CHAT_ID"),
-        text=message,
-        parse_mode=ParseMode.HTML,
-    )
+    try:
+        # Finally, send the message
+        await context.bot.send_message(
+            chat_id=os.getenv("DEVELOPER_CHAT_ID"),
+            text=message,
+            parse_mode=ParseMode.HTML,
+        )
+    except Exception:
+        pass
 
 
 def escape_telegram_entities(text):

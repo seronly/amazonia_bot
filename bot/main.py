@@ -8,7 +8,7 @@ from telegram.ext import (
 )
 import os
 import dotenv
-import custom_logging as cl
+from bot import custom_logging as cl
 from bot import bot, constants
 
 
@@ -172,7 +172,7 @@ def main():
     #     bot.send_start_text,
     # ))
     # Err handler
-    # application.add_error_handler(bot.error_handler)
+    application.add_error_handler(bot.error_handler)
     application.run_polling()
 
 
